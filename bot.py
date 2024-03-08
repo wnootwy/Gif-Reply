@@ -61,49 +61,63 @@ async def on_message(message):
         
         # Extract last half of URL and transform into list to be used {as keywords
         userMessage = message.content[23:].split("-")
+
+        # Remove ID from end of userMessage list.
         userMessage.remove(userMessage[-1])
-        print(f"Gif Title:{userMessage}")
+
+
+        # Define keywords into a list that don't include stop words
         keywords = []
+
+        # Iterate over elements and index of a list
         for i, word in enumerate(userMessage):
-            userMessage[i] = word.capitalize()
+
+            # If the word isn't a stop word, add it to the keywords list in lowercase to be tested for it's tag
             if word.lower() not in STOPWORDS:
                 keywords.append(userMessage[i].lower())
 
+        # Add tags to the keywords (Noun, Verb, Adverb)
         tagKeywords = nltk.pos_tag(keywords)
 
+        # Create a list for each tag to create search key later
         nouns = [word for word, tag in tagKeywords if tag.startswith('N') and word not in STOPWORDS]
         verbs = [word for word, tag in tagKeywords if tag.startswith('VB')]
         adverbs = [word for word, tag in tagKeywords if tag.startswith('RB')]
         adjectives = [word for word, tag in tagKeywords if tag.startswith('JJ')]
 
-
+        # Now that nouns have been defined we reset keywords to help find the subject of the GIF
         keywords = []
         for word in range(len(nouns)):
+
+            # Capitalize each word in nouns so NLTK can do a proper Name Entity Recognition
             nouns[word] = nouns[word].capitalize()
             
-            
+        # Retag as we did earlier    
         keywords = nltk.pos_tag(nouns)
-        nounEntities = nltk.chunk.ne_chunk(keywords)
-        for entity in nounEntities:
-            if isinstance(entity, nltk.tree.Tree) and entity.label() == 'PERSON':
 
+        # Chunk the keywords to determine if person
+        nounEntities = nltk.chunk.ne_chunk(keywords)
+        # Iterate through the entities determined by NLTK
+        for entity in nounEntities:
+
+            # Entity is marked as PERSON
+            if isinstance(entity, nltk.tree.Tree) and entity.label() == 'PERSON':
+                
+                # Store person_name here and break as we only need the first name, mostly likely the subject
                 person_name = ' '.join([word for word, tag in entity.leaves()])
                 break
-        print("Person: %s" % person_name)
+            else:
+                person_name = random.choice(nouns)
+            
 
-        keyword = "{}-{}-{}-{}".format(random.choice(adjectives) if adjectives else "", 
-                                    person_name if person_name else round.choice(nouns), random.choice(verbs) if verbs else "", random.choice(adverbs) if adverbs else "")
-        print(keyword)
-        # Choose a word until a stop word has not been chosen
-        """while True:
-            keyword = random.choice(keywords)
-            if keyword not in STOPWORDS:
-                break
-"""
-        # Leave here to study how well a keyword performs
-        print("keywordsssss %s" % keyword)
+        keyword = "{} {} {} {}".format(random.choice(adjectives) if adjectives else "", 
+                                    person_name if person_name else random.choice(nouns), 
+                                    random.choice(verbs) if verbs else "", 
+                                    random.choice(adverbs) if adverbs else "")
+
 
         TENOR_TOKEN = os.getenv('TENOR_TOKEN')
+        print(keyword)
 
         # Query tenor API to select a gif
         r = requests.get("https://tenor.googleapis.com/v2/search?q=%s&key=%s&limit=1" % (keyword, TENOR_TOKEN))
