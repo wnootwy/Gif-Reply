@@ -66,7 +66,6 @@ async def on_message(message):
 
         
         # Extract last half of URL and transform into list to be used {as keywords
-        print(message.content)
         userMessage = message.content[23:].split("-")
 
         # Remove ID from end of userMessage list.
@@ -124,16 +123,9 @@ async def on_message(message):
                                                 random.choice(verbs) if verbs else "", 
                                                 random.choice(adverbs) if adverbs else "")
         except UnboundLocalError:
-            keyword = " ".join(imageToText(message.content))
-        print("Keyword:", keyword)
-
-        print(f"Nouns:{nouns},\n Verbs:{verbs},\nAdverbs:{adverbs}, \nAdjectives:{adjectives}")
-        #print(f"PersonName{person_name}")
-        
-            
+            keyword = " ".join(imageToText(message.content))          
 
         TENOR_TOKEN = os.getenv('TENOR_TOKEN')
-        print(keyword)
 
         # Query tenor API to select a gif
         r = requests.get("https://tenor.googleapis.com/v2/search?q=%s&key=%s&limit=1" % (keyword, TENOR_TOKEN))
