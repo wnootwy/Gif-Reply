@@ -1,6 +1,12 @@
-import os, random, requests, json, discord, nltk
+import os, random, requests, json, discord, nltk, pytesseract, io
 from dotenv import load_dotenv
 from discord.ext import commands
+from PIL import Image
+
+
+pytesseract.pytesseract.tesseract_cmd = r'C:\Users\Parker\AppData\Local\Programs\Tesseract-OCR\tesseract.exe'
+
+
 
 load_dotenv()
 TOKEN = os.getenv('DISCORD_TOKEN')
@@ -60,6 +66,7 @@ async def on_message(message):
 
         
         # Extract last half of URL and transform into list to be used {as keywords
+        print(message.content)
         userMessage = message.content[23:].split("-")
 
         # Remove ID from end of userMessage list.
@@ -106,15 +113,24 @@ async def on_message(message):
                 # Store person_name here and break as we only need the first name, mostly likely the subject
                 person_name = ' '.join([word for word, tag in entity.leaves()])
                 break
+            elif not nouns and not verbs and not adverbs and not adjectives:
+                imageToText(message.content)
             else:
                 person_name = random.choice(nouns)
+        try:
+            person_name
+            keyword = "{} {} {} {}".format(random.choice(adjectives) if adjectives else "", 
+                                                person_name if person_name else random.choice(nouns), 
+                                                random.choice(verbs) if verbs else "", 
+                                                random.choice(adverbs) if adverbs else "")
+        except UnboundLocalError:
+            keyword = " ".join(imageToText(message.content))
+        print("Keyword:", keyword)
+
+        print(f"Nouns:{nouns},\n Verbs:{verbs},\nAdverbs:{adverbs}, \nAdjectives:{adjectives}")
+        #print(f"PersonName{person_name}")
+        
             
-
-        keyword = "{} {} {} {}".format(random.choice(adjectives) if adjectives else "", 
-                                    person_name if person_name else random.choice(nouns), 
-                                    random.choice(verbs) if verbs else "", 
-                                    random.choice(adverbs) if adverbs else "")
-
 
         TENOR_TOKEN = os.getenv('TENOR_TOKEN')
         print(keyword)
@@ -135,4 +151,33 @@ async def on_message(message):
             response = None
 
 
+# Pass the media.tenor.com link, and the nouns list or create a new nouns list
+
+def imageToText(link):
+    img = requests.get(f'{link}'+".gif", stream=True).content
+    img = Image.open(io.BytesIO(img))
+    text = pytesseract.image_to_string(img)
+    for frame in range(1):
+
+        img.seek(frame)
+
+        imgrgb = img.convert('RGBA')
+
+        imgrgb.show()
+
+        text = pytesseract.image_to_string(imgrgb, config='--psm 6')
+
+        text = text.split()
+        
+        return text
+
 bot.run(TOKEN)
+
+
+"""
+1) Add feature to store tier lists in a db maybe? utilize a command to save it?
+2) Random gng memes command
+
+
+
+"""
