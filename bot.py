@@ -3,7 +3,7 @@ from dotenv import load_dotenv
 from discord.ext import commands
 from PIL import Image
 
-
+# Set path for pytesseract
 pytesseract.pytesseract.tesseract_cmd = r'C:\Users\Parker\AppData\Local\Programs\Tesseract-OCR\tesseract.exe'
 
 
@@ -103,6 +103,8 @@ async def on_message(message):
 
         # Chunk the keywords to determine if person
         nounEntities = nltk.chunk.ne_chunk(keywords)
+
+
         # Iterate through the entities determined by NLTK
         for entity in nounEntities:
 
@@ -112,10 +114,13 @@ async def on_message(message):
                 # Store person_name here and break as we only need the first name, mostly likely the subject
                 person_name = ' '.join([word for word, tag in entity.leaves()])
                 break
+            # If all of these lists are empty, then the title is uselss, fetch the image's text
             elif not nouns and not verbs and not adverbs and not adjectives:
                 imageToText(message.content)
+            # If no person name then choose a random noun for the subject
             else:
                 person_name = random.choice(nouns)
+        # If person_name is not defined, then we will set the keyword using text from the image with Pytesseract
         try:
             person_name
             keyword = "{} {} {} {}".format(random.choice(adjectives) if adjectives else "", 
@@ -146,21 +151,29 @@ async def on_message(message):
 # Pass the media.tenor.com link, and the nouns list or create a new nouns list
 
 def imageToText(link):
+
+    # Get the url from the message and add .gif to redirect to a page just containing a gif that we can work with
     img = requests.get(f'{link}'+".gif", stream=True).content
+
+    # Open the image file as a bytes stream
     img = Image.open(io.BytesIO(img))
-    text = pytesseract.image_to_string(img)
+
+    # Use a for loop to turn the first frame into an image so pytesseract can read the text
     for frame in range(1):
 
         img.seek(frame)
 
         imgrgb = img.convert('RGBA')
 
-        imgrgb.show()
+        #imgrgb.show() # Add this in for debugging the image being pulled
 
+        # Convert image text to string. NOTE: # PSM 6 assumes a single uniform block of text which seems to yield the best results
         text = pytesseract.image_to_string(imgrgb, config='--psm 6')
 
+        # Break the text into a list
         text = text.split()
         
+        # Return text to be used as the keyword later
         return text
 
 bot.run(TOKEN)
