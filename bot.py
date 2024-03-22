@@ -1,18 +1,21 @@
-import os, random, requests, json, discord, nltk, pytesseract, io
+import os, random, requests, json, discord, nltk, pytesseract, io, datetime
 from dotenv import load_dotenv
-from discord.ext import commands
+from discord.ext import commands, tasks
 from PIL import Image
+
 
 # Set path for pytesseract
 pytesseract.pytesseract.tesseract_cmd = r'C:\Users\Parker\AppData\Local\Programs\Tesseract-OCR\tesseract.exe'
 
-
+sailerTime = datetime.time(hour=10, minute=35, second=0)
 
 load_dotenv()
 TOKEN = os.getenv('DISCORD_TOKEN')
 GUILD = os.getenv('DISCORD_GUILD')
 
 bot = commands.Bot(intents=discord.Intents.all(),command_prefix='!')
+
+
 
 @bot.event
 async def on_ready():
@@ -26,6 +29,9 @@ async def on_ready():
     )
     members = '\n - '.join([member.name for member in guild.members])
     print(f'Guild Members:\n - {members}')
+    if not congratsSailer.is_running():
+        congratsSailer.start()
+        print("started sailer")
 
 @bot.event
 async def on_member_join(member):
@@ -33,6 +39,19 @@ async def on_member_join(member):
     await member.dm_channel.send(
         f'Hi {member.name}, welcome to my Discord server!'
     )
+@bot.command(name="neil", description="Sends a meme of Neil")
+async def NeilMeme(message):
+    meme = ["https://media1.tenor.com/images/5f4b8c797ede65c684d850ccffb90d68/tenor.gif?itemid=18971104"]
+    response = random.choice(meme)
+    await message.channel.send(response)
+    
+
+@tasks.loop(time=sailerTime)
+async def congratsSailer():
+    channel = bot.get_channel(1215301644242395186)
+    await channel.send(file=discord.File(r'C:\Users\Parker\Desktop\Discord Bot\CongratsSailer.mp4'))
+    print("is working")
+
 
 @bot.event#command(name='annoy', help="A command that will reply to every tenor GIF sent by any user in the server.")
 async def on_message(message):
@@ -140,12 +159,19 @@ async def on_message(message):
             # Index response content to obtain the proper tenor link
             response = response['results'][0]['itemurl']
 
+
             # Send the GIF after a user has sent the message
             await message.channel.send(response)
+            
         else:
 
             # No result
             response = None
+    # Process any commands that may appear in the message
+    await bot.process_commands(message) 
+    if message.content[0] == "!":
+        print(message.content)
+        await message.delete()
 
 
 # Pass the media.tenor.com link, and the nouns list or create a new nouns list
