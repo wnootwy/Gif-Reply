@@ -1,13 +1,14 @@
-import os, random, requests, json, discord, nltk, pytesseract, io, datetime
+import os, random, requests, json, discord, nltk, pytesseract, io, asyncio
 from dotenv import load_dotenv
 from discord.ext import commands, tasks
 from PIL import Image
+import datetime as dt
 
 
 # Set path for pytesseract
 pytesseract.pytesseract.tesseract_cmd = r'C:\Users\Parker\AppData\Local\Programs\Tesseract-OCR\tesseract.exe'
 
-sailerTime = datetime.time(hour=10, minute=35, second=0)
+
 
 load_dotenv()
 TOKEN = os.getenv('DISCORD_TOKEN')
@@ -29,9 +30,10 @@ async def on_ready():
     )
     members = '\n - '.join([member.name for member in guild.members])
     print(f'Guild Members:\n - {members}')
+
+    # Start the task for sending a weekly sailer message on Friday.
     if not congratsSailer.is_running():
         congratsSailer.start()
-        print("started sailer")
 
 @bot.event
 async def on_member_join(member):
@@ -39,18 +41,34 @@ async def on_member_join(member):
     await member.dm_channel.send(
         f'Hi {member.name}, welcome to my Discord server!'
     )
+
+# Compile list of gng memes and put references in the list in this function
 @bot.command(name="neil", description="Sends a meme of Neil")
 async def NeilMeme(message):
     meme = ["https://media1.tenor.com/images/5f4b8c797ede65c684d850ccffb90d68/tenor.gif?itemid=18971104"]
     response = random.choice(meme)
     await message.channel.send(response)
     
-
-@tasks.loop(time=sailerTime)
+# Perform this task once a week
+@tasks.loop(hours=168)
 async def congratsSailer():
-    channel = bot.get_channel(1215301644242395186)
+    # Channel is currently #general
+    channel = bot.get_channel(1214649204211716108)
+
+    # Send the mp4 file of congrats sailer you've made it to Friday
     await channel.send(file=discord.File(r'C:\Users\Parker\Desktop\Discord Bot\CongratsSailer.mp4'))
-    print("is working")
+
+# Check day of week and time to send out a sailer message/
+@congratsSailer.before_loop
+async def before_sailer():
+    # Loop the whole 7 days
+    for _ in range(60*60*24*7):  
+
+        if dt.datetime.utcnow().strftime("%H:%M UTC %a") == "00:00 UTC Fri":
+            return
+
+        # wait some time before another loop. Don't make it more than 60 sec or it will skip
+        await asyncio.sleep(30)
 
 
 @bot.event#command(name='annoy', help="A command that will reply to every tenor GIF sent by any user in the server.")
@@ -169,7 +187,7 @@ async def on_message(message):
             response = None
     # Process any commands that may appear in the message
     await bot.process_commands(message) 
-    if message.content[0] == "!":
+    if message.content.startswith("!"):
         print(message.content)
         await message.delete()
 
